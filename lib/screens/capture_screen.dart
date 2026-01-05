@@ -35,6 +35,7 @@ class _CaptureScreenState extends State<CaptureScreen> {
 
   late Rect _captureRect;
   bool _isResizing = true;
+  bool _isCapturing = false; // 撮影中はオーバーレイを非表示
   int _captureCount = 0;
   int _appWindowHandle = 0;
 
@@ -119,7 +120,18 @@ class _CaptureScreenState extends State<CaptureScreen> {
 
   /// スクリーンショットを撮影
   Future<void> _takeScreenshot() async {
+    // オーバーレイを非表示にする
+    setState(() => _isCapturing = true);
+
+    // UIが更新されるのを待つ
+    await Future.delayed(const Duration(milliseconds: 50));
+
+    // スクリーンショットを撮影
     final data = _captureService.captureRegion(_captureRect);
+
+    // オーバーレイを再表示
+    setState(() => _isCapturing = false);
+
     if (data != null) {
       await _fileService.saveScreenshot(
         data,
@@ -231,15 +243,16 @@ class _CaptureScreenState extends State<CaptureScreen> {
         backgroundColor: Colors.transparent,
         body: Stack(
           children: [
-            // 半透明オーバーレイ（矩形外を暗くする）
-            Positioned.fill(
-              child: CustomPaint(
-                painter: OverlayPainter(
-                  holeRect: _captureRect,
-                  overlayColor: AppConstants.overlayColor,
+            // 半透明オーバーレイ（矩形外を暗くする）- 撮影中は非表示
+            if (!_isCapturing)
+              Positioned.fill(
+                child: CustomPaint(
+                  painter: OverlayPainter(
+                    holeRect: _captureRect,
+                    overlayColor: AppConstants.overlayColor,
+                  ),
                 ),
               ),
-            ),
 
             // リサイズハンドル（リサイズモード時のみ）
             if (_isResizing) ...[
@@ -300,8 +313,8 @@ class _CaptureScreenState extends State<CaptureScreen> {
               ),
             ],
 
-            // ステータスバー（下部）
-            Positioned(
+            // ステータスバー（下部）- 撮影中は非表示
+            if (!_isCapturing) Positioned(
               left: 16,
               right: 16,
               bottom: 16,
