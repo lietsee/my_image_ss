@@ -1,6 +1,7 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:window_manager/window_manager.dart';
 import '../models/window_info.dart';
 import '../services/capture_service.dart';
 import '../services/file_service.dart';
@@ -45,11 +46,22 @@ class _CaptureScreenState extends State<CaptureScreen> {
   void initState() {
     super.initState();
     _initializeServices();
+    _setupFullscreenWindow();
 
     // アプリ起動時に自分のウィンドウハンドルを記録
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _appWindowHandle = _windowService.getAppWindowHandle();
     });
+  }
+
+  /// ウィンドウをフルスクリーン化（タイトルバーなし）
+  Future<void> _setupFullscreenWindow() async {
+    await windowManager.setFullScreen(true);
+  }
+
+  /// ウィンドウを元に戻す
+  Future<void> _restoreWindow() async {
+    await windowManager.setFullScreen(false);
   }
 
   void _initializeServices() {
@@ -69,6 +81,7 @@ class _CaptureScreenState extends State<CaptureScreen> {
 
   @override
   void dispose() {
+    _restoreWindow();
     _focusNode.dispose();
     super.dispose();
   }
@@ -176,9 +189,12 @@ class _CaptureScreenState extends State<CaptureScreen> {
             child: const Text('キャンセル'),
           ),
           TextButton(
-            onPressed: () {
+            onPressed: () async {
               Navigator.pop(ctx);
-              Navigator.pop(context); // 設定画面に戻る
+              await _restoreWindow();
+              if (mounted) {
+                Navigator.pop(context); // 設定画面に戻る
+              }
             },
             child: const Text('最初から'),
           ),
